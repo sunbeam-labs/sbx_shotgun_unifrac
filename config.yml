@@ -1,2 +1,4 @@
 sbx_shotgun_unifrac:
-  example_rule_options: 'DUMMY STRING'
+  threads: 8
+  green_genes_fp: 
+  green_genes_version:  # E.g. 2024.09

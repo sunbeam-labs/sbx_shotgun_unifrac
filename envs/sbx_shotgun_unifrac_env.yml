@@ -1,6 +1,8 @@
 name: sbx_shotgun_unifrac
 channels:
+  - qiime2
   - conda-forge
   - bioconda
 dependencies:
-  - samtools
+  - bwa
+  - qiime2

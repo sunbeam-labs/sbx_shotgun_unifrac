@@ -1,4 +1,4 @@
-def get_template_path() -> Path:
+def get_shotgun_unifrac_path() -> Path:
     for fp in sys.path:
         if fp.split("/")[-1] == "sbx_shotgun_unifrac":
             return Path(fp)
@@ -7,7 +7,7 @@ def get_template_path() -> Path:
     )
 
 
-SBX_TEMPLATE_VERSION = open(get_template_path() / "VERSION").read().strip()
+SBX_SHOTGUN_UNIFRAC_VERSION = open(get_shotgun_unifrac_path() / "VERSION").read().strip()
 
 try:
     BENCHMARK_FP
@@ -20,47 +20,138 @@ except NameError:
 
 
 localrules:
-    all_template,
+    all_shotgun_unifrac,
 
 
-rule all_template:
+rule all_shotgun_unifrac:
     input:
-        QC_FP / "mush" / "big_file.txt",
+        UNIFRAC_FP / "faith" / "{sample}",
+        UNIFRAC_FP / "unweighted" / "{sample}",
+        UNIFRAC_FP / "weighted" / "{sample}",
 
 
-rule example_rule:
-    """Takes in cleaned .fastq.gz and mushes them all together into a file"""
-    input:
-        expand(QC_FP / "cleaned" / "{sample}_{rp}.fastq.gz", sample=Samples, rp=Pairs),
+rule su_download_green_genes:
+    """Download greengenes db"""
     output:
-        QC_FP / "mush" / "big_file1.txt",
+        dir(Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]),
     log:
-        LOG_FP / "example_rule.log",
+        LOG_FP / "su_download_green_genes.log",
     benchmark:
-        BENCHMARK_FP / "example_rule.tsv"
-    params:
-        opts=Cfg["sbx_shotgun_unifrac"]["example_rule_options"],
+        BENCHMARK_FP / "su_download_green_genes.tsv"
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_TEMPLATE_VERSION}"
     shell:
-        "cat {params.opts} {input} >> {output} 2> {log}"
+        """
+        
+        """
 
 
-rule example_with_script:
-    """Take in big_file1 and then ignore it and write the results of `samtools --help` to the output using a python script"""
+rule su_align_to_green_genes:
+    """Align reads to greengenes db"""
     input:
-        QC_FP / "mush" / "big_file1.txt",
+        reads=expand(QC_FP / "cleaned" / "{{sample}}_{rp}.fastq.gz", rp=Pairs),
+        green_genes_fp=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"],
     output:
-        QC_FP / "mush" / "big_file.txt",
+        UNIFRAC_FP / "aligned" / "{sample}.sam",
     log:
-        LOG_FP / "example_with_script.log",
+        LOG_FP / "su_align_to_green_genes.log",
     benchmark:
-        BENCHMARK_FP / "example_with_script.tsv"
+        BENCHMARK_FP / "su_align_to_green_genes.tsv"
+    params:
+        green_genes_version=Cfg["sbx_shotgun_unifrac"]["green_genes_version"],
+    threads: Cfg["sbx_shotgun_unifrac"]["threads"],
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_TEMPLATE_VERSION}"
-    script:
-        "scripts/example_with_script.py"
+    shell:
+        "bwa mem -t {threads} {input.green_genes_fp}/bwa.{params.green_genes_version}.seqs {input.reads} > {output} 2> {log}"
+
+
+rule su_alpha_phylogenetic_diversity:
+    """Calculate alpha phylogenetic diversity using Faith's PD"""
+    input:
+
+    output:
+        qza=temp(UNIFRAC_FP / "faith" / "{sample}.qza"),
+        tsv=UNIFRAC_FP / "faith" / "{sample}.tsv",
+    log:
+        LOG_FP / "su_alpha_phylogenetic_diversity.log",
+    benchmark:
+        BENCHMARK_FP / "su_alpha_phylogenetic_diversity.tsv"
+    params:
+        green_genes_version=Cfg["sbx_shotgun_unifrac"]["green_genes_version"],
+    conda:
+        "envs/sbx_shotgun_unifrac_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_TEMPLATE_VERSION}"
+    shell:
+        """qiime diversity alpha-phylogenetic \
+        --i-phylogeny "{input.green_genes_fp}/{params.green_genes_version}.phylogeny.id.nwk.qza" \
+        --i-table "${DIR_OUT}/ogu.filtered.table.qza" \
+        --p-metric faith_pd \
+        --o-alpha-diversity {output.qza}
+        
+        qiime tools export \
+        --input-path {output.qza} \
+        --output-path {output.tsv}
+        """
+
+rule su_weighted_unifrac_distance:
+    input:
+
+    output:
+        qza=temp(UNIFRAC_FP / "weighted" / "{sample}.qza"),
+        tsv=UNIFRAC_FP / "weighted" / "{sample}.tsv",
+    log:
+        LOG_FP / "su_weighted_unifrac_distance.log",
+    benchmark:
+        BENCHMARK_FP / "su_weighted_unifrac_distance.tsv"
+    params:
+        green_genes_version=Cfg["sbx_shotgun_unifrac"]["green_genes_version"],
+    conda:
+        "envs/sbx_shotgun_unifrac_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_TEMPLATE_VERSION}"
+    shell:
+        """qiime diversity beta-phylogenetic \
+        --i-phylogeny "{input.green_genes_fp}/{params.green_genes_version}.phylogeny.id.nwk.qza" \
+        --i-table "${DIR_OUT}/ogu.filtered.table.qza" \
+        --p-metric weighted_unifrac \
+        --o-distance-matrix {output.qza}
+        
+        qiime tools export \
+        --input-path {output.qza} \
+        --output-path {output.tsv}
+        """
+
+
+rule su_unweighted_unifrac_distance:
+    input:
+
+    output:
+        qza=temp(UNIFRAC_FP / "unweighted" / "{sample}.qza"),
+        tsv=UNIFRAC_FP / "unweighted" / "{sample}.tsv",
+    log:
+        LOG_FP / "su_unweighted_unifrac_distance.log",
+    benchmark:
+        BENCHMARK_FP / "su_unweighted_unifrac_distance.tsv"
+    params:
+        green_genes_version=Cfg["sbx_shotgun_unifrac"]["green_genes_version"],
+    conda:
+        "envs/sbx_shotgun_unifrac_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_TEMPLATE_VERSION}"
+    shell:
+        """qiime diversity beta-phylogenetic \
+        --i-phylogeny "{input.green_genes_fp}/{params.green_genes_version}.phylogeny.id.nwk.qza" \
+        --i-table "${DIR_OUT}/ogu.filtered.table.qza" \
+        --p-metric unweighted_unifrac \
+        --o-distance-matrix {output.qza}
+        
+        qiime tools export \
+        --input-path {output.qza} \
+        --output-path {output.tsv}
+        """
