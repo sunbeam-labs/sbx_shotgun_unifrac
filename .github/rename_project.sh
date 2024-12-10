@@ -18,8 +18,8 @@ echo "Description: $description";
 
 echo "Renaming project..."
 
-original_full_name="sunbeam-labs/sbx_template"
-original_name="sbx_template"
+original_full_name="sunbeam-labs/sbx_shotgun_unifrac"
+original_name="sbx_shotgun_unifrac"
 #original_urlname="project_urlname"
 #original_description="project_description"
 # for filename in $(find . -name "*.*") 
@@ -35,8 +35,8 @@ do
     echo "Renamed $filename"
 done
 
-mv sbx_template.smk $name.smk
-mv envs/sbx_template_env.yml "envs/${name}_env.yml"
+mv sbx_shotgun_unifrac.smk $name.smk
+mv envs/sbx_shotgun_unifrac_env.yml "envs/${name}_env.yml"
 
 # This command runs only once on GHA!
 rm -rf .github/template.yml

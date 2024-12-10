@@ -1,9 +1,9 @@
 def get_template_path() -> Path:
     for fp in sys.path:
-        if fp.split("/")[-1] == "sbx_template":
+        if fp.split("/")[-1] == "sbx_shotgun_unifrac":
             return Path(fp)
     raise Error(
-        "Filepath for sbx_template not found, are you sure it's installed under extensions/sbx_template?"
+        "Filepath for sbx_shotgun_unifrac not found, are you sure it's installed under extensions/sbx_shotgun_unifrac?"
     )
 
 
@@ -39,11 +39,11 @@ rule example_rule:
     benchmark:
         BENCHMARK_FP / "example_rule.tsv"
     params:
-        opts=Cfg["sbx_template"]["example_rule_options"],
+        opts=Cfg["sbx_shotgun_unifrac"]["example_rule_options"],
     conda:
-        "envs/sbx_template_env.yml"
+        "envs/sbx_shotgun_unifrac_env.yml"
     container:
-        f"docker://sunbeamlabs/sbx_template:{SBX_TEMPLATE_VERSION}"
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_TEMPLATE_VERSION}"
     shell:
         "cat {params.opts} {input} >> {output} 2> {log}"
 
@@ -59,8 +59,8 @@ rule example_with_script:
     benchmark:
         BENCHMARK_FP / "example_with_script.tsv"
     conda:
-        "envs/sbx_template_env.yml"
+        "envs/sbx_shotgun_unifrac_env.yml"
     container:
-        f"docker://sunbeamlabs/sbx_template:{SBX_TEMPLATE_VERSION}"
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_TEMPLATE_VERSION}"
     script:
         "scripts/example_with_script.py"
