@@ -1,4 +1,4 @@
 sbx_shotgun_unifrac:
   threads: 8
-  green_genes_fp: 
-  green_genes_version:  # E.g. 2024.09
+  green_genes_fp: ''
+  green_genes_version: '' # E.g. 2024.09

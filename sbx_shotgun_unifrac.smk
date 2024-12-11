@@ -7,6 +7,7 @@ def get_shotgun_unifrac_path() -> Path:
     )
 
 
+UNIFRAC_FP = Cfg["all"]["output_fp"] / "shotgun_unifrac"
 SBX_SHOTGUN_UNIFRAC_VERSION = (
     open(get_shotgun_unifrac_path() / "VERSION").read().strip()
 )
@@ -46,10 +47,10 @@ rule su_download_green_genes:
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
-        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_TEMPLATE_VERSION}"
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        echo "GG2 db already downloaded" > {log}
+        echo "RULE NOT IMPLEMENTED, ASSUMING PREEXISTING DB" > {log}
         """
 
 
@@ -69,10 +70,10 @@ rule su_import_green_genes_objects_to_qiime:
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
-        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_TEMPLATE_VERSION}"
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        echo "GG2 db already imported" > {log}
+        echo "RULE NOT IMPLEMENTED, ASSUMING PREEXISTING IMPORTS" > {log}
         """
 
 
@@ -85,14 +86,14 @@ rule su_align_to_green_genes:
     output:
         UNIFRAC_FP / "aligned" / "{sample}.sam",
     log:
-        LOG_FP / "su_align_to_green_genes.log",
+        LOG_FP / "su_align_to_green_genes_{sample}.log",
     benchmark:
-        BENCHMARK_FP / "su_align_to_green_genes.tsv"
+        BENCHMARK_FP / "su_align_to_green_genes_{sample}.tsv"
     threads: Cfg["sbx_shotgun_unifrac"]["threads"]
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
-        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_TEMPLATE_VERSION}"
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         "bwa mem -t {threads} {input.green_genes_bwa_seqs_fp} {input.reads} > {output} 2> {log}"
 
@@ -113,7 +114,7 @@ rule su_woltka_classify:
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
-        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_TEMPLATE_VERSION}"
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
         woltka classify -i {params.aligned_fp} -f sam -o {output.biom} 2> {log}
@@ -139,7 +140,7 @@ rule su_taxonomy_from_table:
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
-        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_TEMPLATE_VERSION}"
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
         qiime greengenes2 taxonomy-from-table \
@@ -164,7 +165,7 @@ rule su_filter_table:
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
-        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_TEMPLATE_VERSION}"
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
         qiime greengenes2 filter-features \
@@ -190,7 +191,7 @@ rule su_alpha_phylogenetic_diversity:
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
-        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_TEMPLATE_VERSION}"
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
         qiime diversity alpha-phylogenetic \
@@ -220,7 +221,7 @@ rule su_weighted_unifrac_distance:
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
-        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_TEMPLATE_VERSION}"
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
         qiime diversity beta-phylogenetic \
@@ -231,7 +232,7 @@ rule su_weighted_unifrac_distance:
         
         qiime tools export \
         --input-path {output.qza} \
-        --output-path {output.tsv}
+        --output-path {output.wu}
         """
 
 
@@ -250,7 +251,7 @@ rule su_unweighted_unifrac_distance:
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
-        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_TEMPLATE_VERSION}"
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
         qiime diversity beta-phylogenetic \
@@ -261,5 +262,5 @@ rule su_unweighted_unifrac_distance:
         
         qiime tools export \
         --input-path {output.qza} \
-        --output-path {output.tsv}
+        --output-path {output.uu}
         """
