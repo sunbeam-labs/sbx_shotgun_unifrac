@@ -91,8 +91,8 @@ rule su_temp_install_pip:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        ${{CONDA_PREFIX}}/bin/python -m pip install cython &> {log}
-        ${{CONDA_PREFIX}}/bin/python -m pip install q2-greengenes2 &>> {log}
+        ${{CONDA_PREFIX}}/bin/python -m pip install cython > {log}
+        ${{CONDA_PREFIX}}/bin/python -m pip install q2-greengenes2 >> {log}
         touch {output}
         """
 
@@ -147,7 +147,7 @@ rule su_woltka_classify:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        woltka classify -i {params.aligned_fp} -f sam -o {output.biom} 2> {log}
+        woltka classify -i {params.aligned_fp} -f sam -o {output.biom} > {log} 2>&1
         
         qiime tools import --type FeatureTable[Frequency] \
         --input-path {output.biom} \
@@ -178,7 +178,7 @@ rule su_taxonomy_from_table:
         qiime greengenes2 taxonomy-from-table \
         --i-reference-taxonomy {input.tax} \
         --i-table {input.ogu} \
-        --o-classification {output} 2> {log}
+        --o-classification {output} > {log} 2>&1
         """
 
 
@@ -203,7 +203,7 @@ rule su_filter_table:
         qiime greengenes2 filter-features \
         --i-feature-table {input.ogu} \
         --i-reference {input.phy} \
-        --o-filtered-feature-table {output} 2> {log}
+        --o-filtered-feature-table {output} > {log} 2>&1
         """
 
 
@@ -230,7 +230,7 @@ rule su_alpha_phylogenetic_diversity:
         --i-phylogeny {input.phy} \
         --i-table {input.ogu} \
         --p-metric faith_pd \
-        --o-alpha-diversity {output.qza}
+        --o-alpha-diversity {output.qza} > {log} 2>&1
         
         qiime tools export \
         --input-path {output.qza} \
@@ -260,7 +260,7 @@ rule su_weighted_unifrac_distance:
         --i-phylogeny {input.phy} \
         --i-table {input.ogu} \
         --p-metric weighted_unifrac \
-        --o-distance-matrix {output.qza}
+        --o-distance-matrix {output.qza} > {log} 2>&1
         
         qiime tools export \
         --input-path {output.qza} \
@@ -290,7 +290,7 @@ rule su_unweighted_unifrac_distance:
         --i-phylogeny {input.phy} \
         --i-table {input.ogu} \
         --p-metric unweighted_unifrac \
-        --o-distance-matrix {output.qza}
+        --o-distance-matrix {output.qza} > {log} 2>&1
         
         qiime tools export \
         --input-path {output.qza} \
