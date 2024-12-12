@@ -34,47 +34,47 @@ rule all_shotgun_unifrac:
         UNIFRAC_FP / "weighted",
 
 
-rule su_download_green_genes:
-    """Download greengenes db"""
-    output:
-        phy=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-        / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.phylogeny.id.nwk",
-        seqs_fp=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-        / f"bwa.{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.seqs",
-    log:
-        LOG_FP / "su_download_green_genes.log",
-    benchmark:
-        BENCHMARK_FP / "su_download_green_genes.tsv"
-    conda:
-        "envs/sbx_shotgun_unifrac_env.yml"
-    container:
-        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
-    shell:
-        """
-        echo "RULE NOT IMPLEMENTED, ASSUMING PREEXISTING DB" > {log}
-        """
+# rule su_download_green_genes:
+#     """Download greengenes db"""
+#     output:
+#         phy=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
+#         / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.phylogeny.id.nwk",
+#         seqs_fp=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
+#         / f"bwa.{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.seqs",
+#     log:
+#         LOG_FP / "su_download_green_genes.log",
+#     benchmark:
+#         BENCHMARK_FP / "su_download_green_genes.tsv"
+#     conda:
+#         "envs/sbx_shotgun_unifrac_env.yml"
+#     container:
+#         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
+#     shell:
+#         """
+#         echo "RULE NOT IMPLEMENTED, ASSUMING PREEXISTING DB" > {log}
+#         """
 
 
-rule su_import_green_genes_objects_to_qiime:
-    """Probably necessary to create the qza versions of the database objects"""
-    input:
-        Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-        / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.phylogeny.id.nwk",
-    output:
-        phy=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-        / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.phylogeny.id.nwk.qza",
-    log:
-        LOG_FP / "su_import_green_genes_objects_to_qiime.log",
-    benchmark:
-        BENCHMARK_FP / "su_import_green_genes_objects_to_qiime.tsv"
-    conda:
-        "envs/sbx_shotgun_unifrac_env.yml"
-    container:
-        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
-    shell:
-        """
-        echo "RULE NOT IMPLEMENTED, ASSUMING PREEXISTING IMPORTS" > {log}
-        """
+# rule su_import_green_genes_objects_to_qiime:
+#     """Probably necessary to create the qza versions of the database objects"""
+#     input:
+#         Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
+#         / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.phylogeny.id.nwk",
+#     output:
+#         phy=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
+#         / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.phylogeny.id.nwk.qza",
+#     log:
+#         LOG_FP / "su_import_green_genes_objects_to_qiime.log",
+#     benchmark:
+#         BENCHMARK_FP / "su_import_green_genes_objects_to_qiime.tsv"
+#     conda:
+#         "envs/sbx_shotgun_unifrac_env.yml"
+#     container:
+#         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
+#     shell:
+#         """
+#         echo "RULE NOT IMPLEMENTED, ASSUMING PREEXISTING IMPORTS" > {log}
+#         """
 
 
 rule su_temp_install_pip:
@@ -104,6 +104,11 @@ rule su_align_to_green_genes:
         reads=expand(QC_FP / "decontam" / "{{sample}}_{rp}.fastq.gz", rp=Pairs),
         green_genes_bwa_seqs_fp=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
         / f"bwa.{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.seqs",
+        green_genes_bwa_seqs_indexes_fp=expand(
+            Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
+            / f"bwa.{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.seqs.{ext}",
+            ext=["amb", "ann", "bwt", "pac", "sa"],
+        ),
         pip=UNIFRAC_FP / ".pip_installed",
     output:
         UNIFRAC_FP / "aligned" / "{sample}.sam",
