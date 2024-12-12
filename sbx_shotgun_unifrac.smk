@@ -239,7 +239,7 @@ rule su_alpha_phylogenetic_diversity:
     benchmark:
         BENCHMARK_FP / "su_alpha_phylogenetic_diversity.tsv"
     conda:
-        "envs/sbx_shotgun_unifrac_env.yml"
+        "envs/sbx_q2_diversity_env.yml"
     container:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
@@ -264,7 +264,7 @@ rule su_weighted_unifrac_distance:
     benchmark:
         BENCHMARK_FP / "su_weighted_unifrac_distance.tsv"
     conda:
-        "envs/sbx_shotgun_unifrac_env.yml"
+        "envs/sbx_q2_diversity_env.yml"
     container:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
@@ -289,7 +289,7 @@ rule su_unweighted_unifrac_distance:
     benchmark:
         BENCHMARK_FP / "su_unweighted_unifrac_distance.tsv"
     conda:
-        "envs/sbx_shotgun_unifrac_env.yml"
+        "envs/sbx_q2_diversity_env.yml"
     container:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
@@ -316,7 +316,7 @@ rule su_export_qzas:
     benchmark:
         BENCHMARK_FP / "su_export_qzas.tsv"
     conda:
-        "envs/sbx_shotgun_unifrac_env.yml"
+        "envs/sbx_q2_diversity_env.yml"
     container:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
