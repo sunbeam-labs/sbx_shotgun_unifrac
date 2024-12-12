@@ -37,7 +37,8 @@ rule all_shotgun_unifrac:
 rule su_download_green_genes:
     """Download greengenes db"""
     output:
-        dir_fp=dir(Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]),
+        phy=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
+        / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.phylogeny.id.nwk",
         seqs_fp=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
         / f"bwa.{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.seqs",
     log:
@@ -57,10 +58,9 @@ rule su_download_green_genes:
 rule su_import_green_genes_objects_to_qiime:
     """Probably necessary to create the qza versions of the database objects"""
     input:
-        Cfg["sbx_shotgun_unifrac"]["green_genes_fp"],
+        Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
+        / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.phylogeny.id.nwk",
     output:
-        tax=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-        / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.taxonomy.id.nwk.qza",
         phy=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
         / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.phylogeny.id.nwk.qza",
     log:
@@ -76,18 +76,24 @@ rule su_import_green_genes_objects_to_qiime:
         echo "RULE NOT IMPLEMENTED, ASSUMING PREEXISTING IMPORTS" > {log}
         """
 
+
 rule su_temp_install_pip:
     """TEMPORARY: install pip packages because the conda file can't handle it"""
     output:
         temp(UNIFRAC_FP / ".pip_installed"),
+    log:
+        LOG_FP / "su_temp_install_pip.log",
+    benchmark:
+        BENCHMARK_FP / "su_temp_install_pip.tsv"
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        pip install cython
-        pip install q2-greengenes2
+        pip install cython &> {log}
+        pip install q2-greengenes2 &>> {log}
+        touch {output}
         """
 
 
