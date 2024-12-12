@@ -91,8 +91,8 @@ rule su_temp_install_pip:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        ${CONDA_PREFIX}/bin/python -m pip install cython &> {log}
-        ${CONDA_PREFIX}/bin/python -m pip install q2-greengenes2 &>> {log}
+        ${{CONDA_PREFIX}}/bin/python -m pip install cython &> {log}
+        ${{CONDA_PREFIX}}/bin/python -m pip install q2-greengenes2 &>> {log}
         touch {output}
         """
 
