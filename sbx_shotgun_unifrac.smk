@@ -104,11 +104,11 @@ rule su_align_to_green_genes:
         reads=expand(QC_FP / "decontam" / "{{sample}}_{rp}.fastq.gz", rp=Pairs),
         green_genes_bwa_seqs_fp=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
         / f"bwa.{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.seqs",
-        green_genes_bwa_seqs_indexes_fp=expand(
+        green_genes_bwa_seqs_indexes_fp=[
             Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-            / f"bwa.{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.seqs.{ext}",
-            ext=["amb", "ann", "bwt", "pac", "sa"],
-        ),
+            / f"bwa.{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.seqs.{ext}" for 
+            ext in ["amb", "ann", "bwt", "pac", "sa"]
+        ],
         pip=UNIFRAC_FP / ".pip_installed",
     output:
         UNIFRAC_FP / "aligned" / "{sample}.sam",
