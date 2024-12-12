@@ -80,7 +80,7 @@ rule su_import_green_genes_objects_to_qiime:
 rule su_align_to_green_genes:
     """Align reads to greengenes db"""
     input:
-        reads=expand(QC_FP / "cleaned" / "{{sample}}_{rp}.fastq.gz", rp=Pairs),
+        reads=expand(QC_FP / "decontam" / "{{sample}}_{rp}.fastq.gz", rp=Pairs),
         green_genes_bwa_seqs_fp=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
         / f"bwa.{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.seqs",
     output:
@@ -90,6 +90,8 @@ rule su_align_to_green_genes:
     benchmark:
         BENCHMARK_FP / "su_align_to_green_genes_{sample}.tsv"
     threads: Cfg["sbx_shotgun_unifrac"]["threads"]
+    resources:
+        runtime=240,
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
@@ -111,6 +113,8 @@ rule su_woltka_classify:
         BENCHMARK_FP / "su_woltka_classify.tsv"
     params:
         aligned_fp=UNIFRAC_FP / "aligned",
+    resources:
+        runtime=240,
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
@@ -137,6 +141,8 @@ rule su_taxonomy_from_table:
         LOG_FP / "su_taxonomy_from_table.log",
     benchmark:
         BENCHMARK_FP / "su_taxonomy_from_table.tsv"
+    resources:
+        runtime=240,
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
