@@ -5,5 +5,11 @@ channels:
   - bioconda
 dependencies:
   - bwa
+  - pip
   - qiime2
   - woltka
+# This should work but doesn't
+# the current messy alternative is to have a rule that installs the packages with pip in the order that doesn't break
+#  - pip:
+#    - cython # Shouldn't be necessary but breaking q2-greengenes2 install
+#    - q2-greengenes2

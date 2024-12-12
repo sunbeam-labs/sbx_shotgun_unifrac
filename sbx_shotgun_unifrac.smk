@@ -76,6 +76,20 @@ rule su_import_green_genes_objects_to_qiime:
         echo "RULE NOT IMPLEMENTED, ASSUMING PREEXISTING IMPORTS" > {log}
         """
 
+rule su_temp_install_pip:
+    """TEMPORARY: install pip packages because the conda file can't handle it"""
+    output:
+        temp(UNIFRAC_FP / ".pip_installed"),
+    conda:
+        "envs/sbx_shotgun_unifrac_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
+    shell:
+        """
+        pip install cython
+        pip install q2-greengenes2
+        """
+
 
 rule su_align_to_green_genes:
     """Align reads to greengenes db"""
@@ -83,6 +97,7 @@ rule su_align_to_green_genes:
         reads=expand(QC_FP / "decontam" / "{{sample}}_{rp}.fastq.gz", rp=Pairs),
         green_genes_bwa_seqs_fp=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
         / f"bwa.{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.seqs",
+        pip=UNIFRAC_FP / ".pip_installed",
     output:
         UNIFRAC_FP / "aligned" / "{sample}.sam",
     log:
