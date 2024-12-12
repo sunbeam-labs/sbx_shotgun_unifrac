@@ -91,9 +91,8 @@ rule su_temp_install_pip:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        which python > {log}
-        python -m pip install cython &>> {log}
-        python -m pip install q2-greengenes2 &>> {log}
+        ${CONDA_PREFIX}/bin/python -m pip install cython &> {log}
+        ${CONDA_PREFIX}/bin/python -m pip install q2-greengenes2 &>> {log}
         touch {output}
         """
 
@@ -106,8 +105,8 @@ rule su_align_to_green_genes:
         / f"bwa.{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.seqs",
         green_genes_bwa_seqs_indexes_fp=[
             Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-            / f"bwa.{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.seqs.{ext}" for 
-            ext in ["amb", "ann", "bwt", "pac", "sa"]
+            / f"bwa.{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.seqs.{ext}"
+            for ext in ["amb", "ann", "bwt", "pac", "sa"]
         ],
         pip=UNIFRAC_FP / ".pip_installed",
     output:
