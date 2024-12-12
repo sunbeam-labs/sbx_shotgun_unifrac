@@ -91,7 +91,8 @@ rule su_temp_install_pip:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        ${{CONDA_PREFIX}}/bin/python -m pip install cython > {log}
+        ${{CONDA_PREFIX}}/bin/python -m pip install numpy > {log}
+        ${{CONDA_PREFIX}}/bin/python -m pip install cython >> {log}
         ${{CONDA_PREFIX}}/bin/python -m pip install q2-greengenes2 >> {log}
         touch {output}
         """
@@ -132,7 +133,6 @@ rule su_woltka_classify:
         expand(UNIFRAC_FP / "aligned" / "{sample}.sam", sample=Samples),
     output:
         biom=UNIFRAC_FP / "classified" / "ogu.biom",
-        qza=UNIFRAC_FP / "classified" / "ogu.table.qza",
     log:
         LOG_FP / "su_woltka_classify.log",
     benchmark:
@@ -148,10 +148,29 @@ rule su_woltka_classify:
     shell:
         """
         woltka classify -i {params.aligned_fp} -f sam -o {output.biom} > {log} 2>&1
-        
+        """
+
+
+rule su_convert_biom_to_qza:
+    input:
+        biom=UNIFRAC_FP / "classified" / "ogu.biom",
+    output:
+        qza=UNIFRAC_FP / "classified" / "ogu.table.qza",
+    log:
+        LOG_FP / "su_convert_biom_to_qza.log",
+    benchmark:
+        BENCHMARK_FP / "su_convert_biom_to_qza.tsv"
+    resources:
+        runtime=240,
+    conda:
+        "envs/sbx_shotgun_unifrac_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
+    shell:
+        """
         qiime tools import --type FeatureTable[Frequency] \
-        --input-path {output.biom} \
-        --output-path {output.qza}
+        --input-path {input.biom} \
+        --output-path {output.qza} > {log} 2>&1
         """
 
 
@@ -215,7 +234,6 @@ rule su_alpha_phylogenetic_diversity:
         ogu=UNIFRAC_FP / "classified" / "ogu.filtered.table.qza",
     output:
         qza=temp(UNIFRAC_FP / "faith.qza"),
-        tsv=UNIFRAC_FP / "faith.tsv",
     log:
         LOG_FP / "su_alpha_phylogenetic_diversity.log",
     benchmark:
@@ -231,10 +249,6 @@ rule su_alpha_phylogenetic_diversity:
         --i-table {input.ogu} \
         --p-metric faith_pd \
         --o-alpha-diversity {output.qza} > {log} 2>&1
-        
-        qiime tools export \
-        --input-path {output.qza} \
-        --output-path {output.tsv}
         """
 
 
@@ -245,7 +259,6 @@ rule su_weighted_unifrac_distance:
         ogu=UNIFRAC_FP / "classified" / "ogu.filtered.table.qza",
     output:
         qza=temp(UNIFRAC_FP / "weighted.qza"),
-        wu=UNIFRAC_FP / "weighted",
     log:
         LOG_FP / "su_weighted_unifrac_distance.log",
     benchmark:
@@ -261,10 +274,6 @@ rule su_weighted_unifrac_distance:
         --i-table {input.ogu} \
         --p-metric weighted_unifrac \
         --o-distance-matrix {output.qza} > {log} 2>&1
-        
-        qiime tools export \
-        --input-path {output.qza} \
-        --output-path {output.wu}
         """
 
 
@@ -275,7 +284,6 @@ rule su_unweighted_unifrac_distance:
         ogu=UNIFRAC_FP / "classified" / "ogu.filtered.table.qza",
     output:
         qza=temp(UNIFRAC_FP / "unweighted.qza"),
-        uu=UNIFRAC_FP / "unweighted",
     log:
         LOG_FP / "su_unweighted_unifrac_distance.log",
     benchmark:
@@ -291,8 +299,37 @@ rule su_unweighted_unifrac_distance:
         --i-table {input.ogu} \
         --p-metric unweighted_unifrac \
         --o-distance-matrix {output.qza} > {log} 2>&1
-        
+        """
+
+
+rule su_export_qzas:
+    input:
+        faith=UNIFRAC_FP / "faith.qza",
+        weighted=UNIFRAC_FP / "weighted.qza",
+        unweighted=UNIFRAC_FP / "unweighted.qza",
+    output:
+        UNIFRAC_FP / "faith.tsv",
+        UNIFRAC_FP / "weighted",
+        UNIFRAC_FP / "unweighted",
+    log:
+        LOG_FP / "su_export_qzas.log",
+    benchmark:
+        BENCHMARK_FP / "su_export_qzas.tsv"
+    conda:
+        "envs/sbx_shotgun_unifrac_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
+    shell:
+        """
         qiime tools export \
-        --input-path {output.qza} \
-        --output-path {output.uu}
+        --input-path {input.faith} \
+        --output-path {output.faith} > {log} 2>&1
+
+        qiime tools export \
+        --input-path {input.weighted} \
+        --output-path {output.weighted} >> {log} 2>&1
+
+        qiime tools export \
+        --input-path {input.unweighted} \
+        --output-path {output.unweighted} >> {log} 2>&1
         """
