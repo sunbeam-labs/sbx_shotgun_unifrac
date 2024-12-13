@@ -308,9 +308,9 @@ rule su_export_qzas:
         weighted=UNIFRAC_FP / "weighted.qza",
         unweighted=UNIFRAC_FP / "unweighted.qza",
     output:
-        UNIFRAC_FP / "faith.tsv",
-        UNIFRAC_FP / "weighted",
-        UNIFRAC_FP / "unweighted",
+        faith=UNIFRAC_FP / "faith.tsv",
+        weighted=UNIFRAC_FP / "weighted",
+        unweighted=UNIFRAC_FP / "unweighted",
     log:
         LOG_FP / "su_export_qzas.log",
     benchmark:
