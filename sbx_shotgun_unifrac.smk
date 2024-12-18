@@ -29,7 +29,7 @@ localrules:
 
 rule all_shotgun_unifrac:
     input:
-        UNIFRAC_FP / "faith.tsv",
+        UNIFRAC_FP / "faith",
         UNIFRAC_FP / "unweighted",
         UNIFRAC_FP / "weighted",
 
@@ -308,7 +308,7 @@ rule su_export_qzas:
         weighted=UNIFRAC_FP / "weighted.qza",
         unweighted=UNIFRAC_FP / "unweighted.qza",
     output:
-        faith=UNIFRAC_FP / "faith.tsv",
+        faith=UNIFRAC_FP / "faith",
         weighted=UNIFRAC_FP / "weighted",
         unweighted=UNIFRAC_FP / "unweighted",
     log:
