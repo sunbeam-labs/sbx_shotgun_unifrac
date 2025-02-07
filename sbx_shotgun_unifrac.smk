@@ -111,7 +111,7 @@ rule su_align_to_green_genes:
         ],
         pip=UNIFRAC_FP / ".pip_installed",
     output:
-        UNIFRAC_FP / "aligned" / "{sample}.sam",
+        temp(UNIFRAC_FP / "aligned" / "{sample}.sam"),
     log:
         LOG_FP / "su_align_to_green_genes_{sample}.log",
     benchmark:
