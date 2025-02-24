@@ -69,7 +69,7 @@ def run_sunbeam(setup):
             "run",
             "--profile",
             project_dir,
-            "all_template",
+            "all_shotgun_unifrac",
             "--directory",
             temp_dir,
             "-n",
