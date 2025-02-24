@@ -11,7 +11,6 @@ UNIFRAC_FP = Cfg["all"]["output_fp"] / "shotgun_unifrac"
 SBX_SHOTGUN_UNIFRAC_VERSION = (
     open(get_shotgun_unifrac_path() / "VERSION").read().strip()
 )
-SBX_SHOTGUN_UNIFRAC_GG_VERSION = Cfg["sbx_shotgun_unifrac"]["green_genes_version"]
 
 try:
     BENCHMARK_FP
@@ -25,56 +24,15 @@ except NameError:
 
 localrules:
     all_shotgun_unifrac,
+    su_temp_install_pip,
+    su_extract_outputs,
 
 
 rule all_shotgun_unifrac:
     input:
-        UNIFRAC_FP / "faith",
-        UNIFRAC_FP / "unweighted",
-        UNIFRAC_FP / "weighted",
-
-
-# rule su_download_green_genes:
-#     """Download greengenes db"""
-#     output:
-#         phy=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-#         / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.phylogeny.id.nwk",
-#         seqs_fp=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-#         / f"bwa.{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.seqs",
-#     log:
-#         LOG_FP / "su_download_green_genes.log",
-#     benchmark:
-#         BENCHMARK_FP / "su_download_green_genes.tsv"
-#     conda:
-#         "envs/sbx_shotgun_unifrac_env.yml"
-#     container:
-#         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
-#     shell:
-#         """
-#         echo "RULE NOT IMPLEMENTED, ASSUMING PREEXISTING DB" > {log}
-#         """
-
-
-# rule su_import_green_genes_objects_to_qiime:
-#     """Probably necessary to create the qza versions of the database objects"""
-#     input:
-#         Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-#         / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.phylogeny.id.nwk",
-#     output:
-#         phy=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-#         / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.phylogeny.id.nwk.qza",
-#     log:
-#         LOG_FP / "su_import_green_genes_objects_to_qiime.log",
-#     benchmark:
-#         BENCHMARK_FP / "su_import_green_genes_objects_to_qiime.tsv"
-#     conda:
-#         "envs/sbx_shotgun_unifrac_env.yml"
-#     container:
-#         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
-#     shell:
-#         """
-#         echo "RULE NOT IMPLEMENTED, ASSUMING PREEXISTING IMPORTS" > {log}
-#         """
+        faith=UNIFRAC_FP / "faith_pd_unrarefied.tsv",
+        weighted=UNIFRAC_FP / "wu_unrarefied.tsv",
+        unweighted=UNIFRAC_FP / "uu_unrarefied.tsv",
 
 
 rule su_temp_install_pip:
@@ -98,20 +56,15 @@ rule su_temp_install_pip:
         """
 
 
-rule su_align_to_green_genes:
-    """Align reads to greengenes db"""
+rule su_align_to_wolr:
+    """Align reads to WoLr db"""
     input:
-        reads=expand(QC_FP / "decontam" / "{{sample}}_{rp}.fastq.gz", rp=Pairs),
-        green_genes_bwa_seqs_fp=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-        / f"bwa.{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.seqs",
-        green_genes_bwa_seqs_indexes_fp=[
-            Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-            / f"bwa.{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.seqs.{ext}"
-            for ext in ["amb", "ann", "bwt", "pac", "sa"]
-        ],
+        r1=QC_FP / "decontam" / "{sample}_1.fastq.gz",
+        r2=QC_FP / "decontam" / "{sample}_2.fastq.gz",
+        wolr=Cfg["sbx_shotgun_unifrac"]["wolr_fp"],
         pip=UNIFRAC_FP / ".pip_installed",
     output:
-        temp(UNIFRAC_FP / "aligned" / "{sample}.sam"),
+        temp(UNIFRAC_FP / "aligned" / "{sample}.sam.gz"),
     log:
         LOG_FP / "su_align_to_green_genes_{sample}.log",
     benchmark:
@@ -119,18 +72,25 @@ rule su_align_to_green_genes:
     threads: Cfg["sbx_shotgun_unifrac"]["threads"]
     resources:
         runtime=240,
+        mem_mb=100000,
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
-        "bwa mem -t {threads} {input.green_genes_bwa_seqs_fp} {input.reads} > {output} 2> {log}"
+        """
+        bowtie2 -p 8 -x {input.wolr} \
+        -1 {input.r1} \
+        -2 {input.r2} \
+        --very-sensitive --no-head \
+        --no-unal | cut -f1-9 | sed 's/$/\t*\t*/' | gzip > {output}
+        """
 
 
 rule su_woltka_classify:
     """Classify reads using woltka"""
     input:
-        expand(UNIFRAC_FP / "aligned" / "{sample}.sam", sample=Samples),
+        expand(UNIFRAC_FP / "aligned" / "{sample}.sam.gz", sample=Samples),
     output:
         biom=UNIFRAC_FP / "classified" / "ogu.biom",
     log:
@@ -174,39 +134,11 @@ rule su_convert_biom_to_qza:
         """
 
 
-rule su_taxonomy_from_table:
-    """Get taxonomy from table"""
-    input:
-        ogu=UNIFRAC_FP / "classified" / "ogu.table.qza",
-        tax=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-        / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.taxonomy.id.nwk.qza",
-    output:
-        UNIFRAC_FP / "classified" / "ogu.taxonomy.qza",
-    log:
-        LOG_FP / "su_taxonomy_from_table.log",
-    benchmark:
-        BENCHMARK_FP / "su_taxonomy_from_table.tsv"
-    resources:
-        runtime=240,
-    conda:
-        "envs/sbx_shotgun_unifrac_env.yml"
-    container:
-        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
-    shell:
-        """
-        qiime greengenes2 taxonomy-from-table \
-        --i-reference-taxonomy {input.tax} \
-        --i-table {input.ogu} \
-        --o-classification {output} > {log} 2>&1
-        """
-
-
 rule su_filter_table:
     """Filter table"""
     input:
         ogu=UNIFRAC_FP / "classified" / "ogu.table.qza",
-        phy=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-        / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.phylogeny.id.nwk.qza",
+        phy=Cfg["sbx_shotgun_unifrac"]["tree_fp"],
     output:
         UNIFRAC_FP / "classified" / "ogu.filtered.table.qza",
     log:
@@ -229,11 +161,10 @@ rule su_filter_table:
 rule su_alpha_phylogenetic_diversity:
     """Calculate alpha phylogenetic diversity using Faith's PD"""
     input:
-        phy=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-        / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.phylogeny.id.nwk.qza",
+        phy=Cfg["sbx_shotgun_unifrac"]["tree_fp"],
         ogu=UNIFRAC_FP / "classified" / "ogu.filtered.table.qza",
     output:
-        qza=temp(UNIFRAC_FP / "faith.qza"),
+        qza=temp(UNIFRAC_FP / "faith_pd_vector.qza"),
     log:
         LOG_FP / "su_alpha_phylogenetic_diversity.log",
     benchmark:
@@ -254,8 +185,7 @@ rule su_alpha_phylogenetic_diversity:
 
 rule su_weighted_unifrac_distance:
     input:
-        phy=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-        / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.phylogeny.id.nwk.qza",
+        phy=Cfg["sbx_shotgun_unifrac"]["tree_fp"],
         ogu=UNIFRAC_FP / "classified" / "ogu.filtered.table.qza",
     output:
         qza=temp(UNIFRAC_FP / "weighted.qza"),
@@ -272,15 +202,14 @@ rule su_weighted_unifrac_distance:
         qiime diversity beta-phylogenetic \
         --i-phylogeny {input.phy} \
         --i-table {input.ogu} \
-        --p-metric weighted_unifrac \
+        --p-metric weighted_normalized_unifrac \
         --o-distance-matrix {output.qza} > {log} 2>&1
         """
 
 
 rule su_unweighted_unifrac_distance:
     input:
-        phy=Cfg["sbx_shotgun_unifrac"]["green_genes_fp"]
-        / f"{SBX_SHOTGUN_UNIFRAC_GG_VERSION}.phylogeny.id.nwk.qza",
+        phy=Cfg["sbx_shotgun_unifrac"]["tree_fp"],
         ogu=UNIFRAC_FP / "classified" / "ogu.filtered.table.qza",
     output:
         qza=temp(UNIFRAC_FP / "unweighted.qza"),
@@ -304,13 +233,13 @@ rule su_unweighted_unifrac_distance:
 
 rule su_export_qzas:
     input:
-        faith=UNIFRAC_FP / "faith.qza",
+        faith=UNIFRAC_FP / "faith_pd_vector.qza",
         weighted=UNIFRAC_FP / "weighted.qza",
         unweighted=UNIFRAC_FP / "unweighted.qza",
     output:
-        faith=UNIFRAC_FP / "faith",
-        weighted=UNIFRAC_FP / "weighted",
-        unweighted=UNIFRAC_FP / "unweighted",
+        faith=temp(UNIFRAC_FP / "faith"),
+        weighted=temp(UNIFRAC_FP / "weighted"),
+        unweighted=temp(UNIFRAC_FP / "unweighted"),
     log:
         LOG_FP / "su_export_qzas.log",
     benchmark:
@@ -332,4 +261,21 @@ rule su_export_qzas:
         qiime tools export \
         --input-path {input.unweighted} \
         --output-path {output.unweighted} >> {log} 2>&1
+        """
+
+
+rule su_extract_outputs:
+    input:
+        faith=UNIFRAC_FP / "faith",
+        weighted=UNIFRAC_FP / "weighted",
+        unweighted=UNIFRAC_FP / "unweighted",
+    output:
+        faith=UNIFRAC_FP / "faith_pd_unrarefied.tsv",
+        weighted=UNIFRAC_FP / "wu_unrarefied.tsv",
+        unweighted=UNIFRAC_FP / "uu_unrarefied.tsv",
+    shell:
+        """
+        mv {input.faith} / alpha-diversity.tsv {output.faith}
+        mv {input.weighted} / distance-matrix.tsv {output.weighted}
+        mv {input.unweighted} / distance-matrix.tsv {output.unweighted}
         """
