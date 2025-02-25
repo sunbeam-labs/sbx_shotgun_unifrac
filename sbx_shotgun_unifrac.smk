@@ -64,7 +64,7 @@ rule su_align_to_wolr:
         wolr=Cfg["sbx_shotgun_unifrac"]["wolr_fp"],
         pip=UNIFRAC_FP / ".pip_installed",
     output:
-        temp(UNIFRAC_FP / "aligned" / "{sample}.sam.gz"),
+        sam=temp(UNIFRAC_FP / "aligned" / "{sample}.sam"),
     log:
         LOG_FP / "su_align_to_green_genes_{sample}.log",
     benchmark:
@@ -83,31 +83,61 @@ rule su_align_to_wolr:
         -1 {input.r1} \
         -2 {input.r2} \
         --very-sensitive --no-head \
-        --no-unal | cut -f1-9 | sed 's/$/\t*\t*/' | gzip > {output}
+        --no-unal | cut -f1-9 | sed 's/$/\t*\t*/' > {output.sam} 2> {log}
         """
 
 
-rule su_woltka_classify:
-    """Classify reads using woltka"""
+rule su_filter_on_sequence_number:
     input:
-        expand(UNIFRAC_FP / "aligned" / "{sample}.sam.gz", sample=Samples),
+        expand(UNIFRAC_FP / "aligned" / "{sample}.sam", sample=Samples),
     output:
-        biom=UNIFRAC_FP / "classified" / "ogu.biom",
+        temp(UNIFRAC_FP / "aligned" / "filtered" / ".done"),
     log:
-        LOG_FP / "su_woltka_classify.log",
+        LOG_FP / "su_filter_on_sequence_number.log",
     benchmark:
-        BENCHMARK_FP / "su_woltka_classify.tsv"
+        BENCHMARK_FP / "su_filter_on_sequence_number.tsv"
     params:
-        aligned_fp=UNIFRAC_FP / "aligned",
-    resources:
-        runtime=240,
+        fp=UNIFRAC_FP / "aligned" / "filtered",
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        woltka classify -i {params.aligned_fp} -f sam -o {output.biom} > {log} 2>&1
+        echo "Files with 100 or fewer sequences:" > {log}
+        mkdir -p {params.fp}
+        for f in {input} ; do
+            if [ $(samtools view -c -F 4 $f) -le 100 ]; then
+                echo $f >> {log}
+            else
+                cp $f {params.fp}
+            fi
+        done
+        touch {output}
+        """
+
+
+rule su_woltka_classify:
+    """Classify reads using woltka"""
+    input:
+        aligned_fp=UNIFRAC_FP / "aligned" / "filtered" / ".done",
+    output:
+        biom=UNIFRAC_FP / "classified" / "ogu.biom",
+    log:
+        LOG_FP / "su_woltka_classify.log",
+    benchmark:
+        BENCHMARK_FP / "su_woltka_classify.tsv"
+    resources:
+        runtime=240,
+    params:
+        fp=UNIFRAC_FP / "aligned" / "filtered",
+    conda:
+        "envs/sbx_shotgun_unifrac_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
+    shell:
+        """
+        woltka classify -i {params.fp} -f sam -o {output.biom} > {log} 2>&1
         """
 
 
