@@ -61,7 +61,17 @@ rule su_align_to_wolr:
     input:
         r1=QC_FP / "decontam" / "{sample}_1.fastq.gz",
         r2=QC_FP / "decontam" / "{sample}_2.fastq.gz",
-        wolr=Cfg["sbx_shotgun_unifrac"]["wolr_fp"],
+        wolr=expand(
+            Path(Cfg["sbx_shotgun_unifrac"]["wolr_fp"]).with_suffix(ext),
+            ext=[
+                ".1.bt2l",
+                ".2.bt2l",
+                ".3.bt2l",
+                ".4.bt2l",
+                ".rev.1.bt2l",
+                ".rev.2.bt2l",
+            ],
+        ),
         pip=UNIFRAC_FP / ".pip_installed",
     output:
         sam=temp(UNIFRAC_FP / "aligned" / "{sample}.sam"),
@@ -69,6 +79,8 @@ rule su_align_to_wolr:
         LOG_FP / "su_align_to_green_genes_{sample}.log",
     benchmark:
         BENCHMARK_FP / "su_align_to_green_genes_{sample}.tsv"
+    params:
+        wolr=Cfg["sbx_shotgun_unifrac"]["wolr_fp"],
     threads: Cfg["sbx_shotgun_unifrac"]["threads"]
     resources:
         runtime=240,
@@ -79,7 +91,7 @@ rule su_align_to_wolr:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        bowtie2 -p 8 -x {input.wolr} \
+        bowtie2 -p 8 -x {params.wolr} \
         -1 {input.r1} \
         -2 {input.r2} \
         --very-sensitive --no-head \
