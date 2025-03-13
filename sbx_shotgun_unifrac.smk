@@ -62,7 +62,9 @@ rule su_align_to_wolr:
         r1=QC_FP / "decontam" / "{sample}_1.fastq.gz",
         r2=QC_FP / "decontam" / "{sample}_2.fastq.gz",
         wolr=expand(
-            Path(Cfg["sbx_shotgun_unifrac"]["wolr_fp"]).with_suffix(ext),
+            (Path(Cfg["sbx_shotgun_unifrac"]["wolr_fp"]) / "WoLr2").with_suffix(
+                "{ext}"
+            ),
             ext=[
                 ".1.bt2l",
                 ".2.bt2l",
