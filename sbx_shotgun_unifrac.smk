@@ -60,7 +60,7 @@ rule su_align_to_wolr:
     """Align reads to WoLr db"""
     input:
         [
-            Path(Cfg["sbx_shotgun_unifrac"]["wolr_fp"]) / "WoLr2" + ext
+            Path(Cfg["sbx_shotgun_unifrac"]["wolr_fp"]) / ("WoLr2" + ext)
             for ext in [
                 ".1.bt2l",
                 ".2.bt2l",
