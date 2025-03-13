@@ -59,21 +59,19 @@ rule su_temp_install_pip:
 rule su_align_to_wolr:
     """Align reads to WoLr db"""
     input:
-        r1=QC_FP / "decontam" / "{sample}_1.fastq.gz",
-        r2=QC_FP / "decontam" / "{sample}_2.fastq.gz",
-        wolr=expand(
-            (Path(Cfg["sbx_shotgun_unifrac"]["wolr_fp"]) / "WoLr2").with_suffix(
-                "{ext}"
-            ),
-            ext=[
+        [
+            Path(Cfg["sbx_shotgun_unifrac"]["wolr_fp"]) / "WoLr2" + ext
+            for ext in [
                 ".1.bt2l",
                 ".2.bt2l",
                 ".3.bt2l",
                 ".4.bt2l",
                 ".rev.1.bt2l",
                 ".rev.2.bt2l",
-            ],
-        ),
+            ]
+        ],
+        r1=QC_FP / "decontam" / "{sample}_1.fastq.gz",
+        r2=QC_FP / "decontam" / "{sample}_2.fastq.gz",
         pip=UNIFRAC_FP / ".pip_installed",
     output:
         sam=temp(UNIFRAC_FP / "aligned" / "{sample}.sam"),
