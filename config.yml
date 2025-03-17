@@ -1,4 +1,4 @@
 sbx_shotgun_unifrac:
   threads: 8
-  green_genes_fp: ''
-  green_genes_version: '' # E.g. 2024.09
+  wolr_fp: '/mnt/isilon/microbiome/analysis/biodata/shotgun_unifrac_database/bowtie2/'
+  tree_fp: '/mnt/isilon/microbiome/analysis/biodata/shotgun_unifrac_database/qiime2_from_wfl/phylogeny.qza'

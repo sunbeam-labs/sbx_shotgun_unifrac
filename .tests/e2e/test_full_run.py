@@ -11,6 +11,21 @@ def setup():
     temp_dir = Path(tempfile.mkdtemp())
 
     reads_fp = Path(".tests/data/reads/").resolve()
+    dummy_wolr_fp = temp_dir / "wolr"
+    dummy_wolr_fp.mkdir()
+    [
+        (dummy_wolr_fp / x).touch()
+        for x in [
+            "WoLr2.1.bt2l",
+            "WoLr2.2.bt2l",
+            "WoLr2.3.bt2l",
+            "WoLr2.4.bt2l",
+            "WoLr2.rev.1.bt2l",
+            "WoLr2.rev.2.bt2l",
+        ]
+    ]
+    dummy_phy_fp = temp_dir / "dummy_phy.qza"
+    dummy_phy_fp.touch()
 
     project_dir = temp_dir / "project/"
 
@@ -18,7 +33,21 @@ def setup():
 
     config_fp = project_dir / "sunbeam_config.yml"
 
-    config_str = f"sbx_shotgun_unifrac: {{example_rule_options: '--number'}}"
+    config_str = f"sbx_shotgun_unifrac: {{wolr_fp: '{str(dummy_wolr_fp)}'}}"
+
+    sp.check_output(
+        [
+            "sunbeam",
+            "config",
+            "modify",
+            "-i",
+            "-s",
+            f"{config_str}",
+            f"{config_fp}",
+        ]
+    )
+
+    config_str = f"sbx_shotgun_unifrac: {{tree_fp: '{str(dummy_phy_fp)}'}}"
 
     sp.check_output(
         [
@@ -45,25 +74,18 @@ def run_sunbeam(setup):
     stats_fp = project_dir / "stats"
 
     # Run the test job
-    try:
-        sp.check_output(
-            [
-                "sunbeam",
-                "run",
-                "--profile",
-                project_dir,
-                "all_template",
-                "--directory",
-                temp_dir,
-            ]
-        )
-    except sp.CalledProcessError as e:
-        shutil.copytree(log_fp, "logs/")
-        shutil.copytree(stats_fp, "stats/")
-        sys.exit(e)
-
-    shutil.copytree(log_fp, "logs/")
-    shutil.copytree(stats_fp, "stats/")
+    sp.check_output(
+        [
+            "sunbeam",
+            "run",
+            "--profile",
+            project_dir,
+            "all_shotgun_unifrac",
+            "--directory",
+            temp_dir,
+            "-n",
+        ]
+    )
 
     output_fp = project_dir / "sunbeam_output"
     benchmarks_fp = project_dir / "stats/"
@@ -74,7 +96,4 @@ def run_sunbeam(setup):
 def test_full_run(run_sunbeam):
     output_fp, benchmarks_fp = run_sunbeam
 
-    big_file_fp = output_fp / "qc/mush/big_file.txt"
-
-    # Check output
-    assert big_file_fp.exists(), f"{big_file_fp} does not exist"
+    assert True  # Dryrun successful

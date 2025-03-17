@@ -63,13 +63,3 @@ jobs:
         
       - name: Test with Sunbeam
         uses: sunbeam-labs/sbx_test_action@v1
-
-      - name: Dump Logs
-        shell: bash
-        if: always()
-        run: tail -n +1 logs/*
-      
-      - name: Dump Stats
-        shell: bash
-        if: always()
-        run: cat stats/*
