@@ -32,8 +32,8 @@ To run an extension, simply run Sunbeam as usual with your extension's target ru
 ### Options for config.yml
 
   - threads: Number of threads to use with `bwa`
-  - green_genes_fp: Directory with all GreenGenes reference files
-  - green_genes_version: Version of the GreenGenes db (E.g. "2024.09")
+  - wolr_fp: Directory with WoLr2 bowtie2 database
+  - tree_fp: Qiime2 phylogeny
     
 ## Installing an extension (legacy instructions for sunbeam <3.0)
 
