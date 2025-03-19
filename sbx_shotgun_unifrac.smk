@@ -91,7 +91,7 @@ rule su_align_to_wolr:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        bowtie2 -p 8 -x {params.wolr} \
+        bowtie2 -p 8 -x {params.wolr}/WoLr2 \
         -1 {input.r1} \
         -2 {input.r2} \
         --very-sensitive --no-head \
