@@ -279,9 +279,9 @@ rule su_export_qzas:
         weighted=UNIFRAC_FP / "weighted.qza",
         unweighted=UNIFRAC_FP / "unweighted.qza",
     output:
-        faith=temp(UNIFRAC_FP / "faith"),
-        weighted=temp(UNIFRAC_FP / "weighted"),
-        unweighted=temp(UNIFRAC_FP / "unweighted"),
+        faith=temp(UNIFRAC_FP / "faith" / "alpha-diversity.tsv"),
+        weighted=temp(UNIFRAC_FP / "weighted" / "distance-matrix.tsv"),
+        unweighted=temp(UNIFRAC_FP / "unweighted" / "distance-matrix.tsv"),
     log:
         LOG_FP / "su_export_qzas.log",
     benchmark:
@@ -294,30 +294,30 @@ rule su_export_qzas:
         """
         qiime tools export \
         --input-path {input.faith} \
-        --output-path {output.faith} > {log} 2>&1
+        --output-path $(dirname {output.faith}) > {log} 2>&1
 
         qiime tools export \
         --input-path {input.weighted} \
-        --output-path {output.weighted} >> {log} 2>&1
+        --output-path $(dirname {output.weighted}) >> {log} 2>&1
 
         qiime tools export \
         --input-path {input.unweighted} \
-        --output-path {output.unweighted} >> {log} 2>&1
+        --output-path $(dirname {output.unweighted}) >> {log} 2>&1
         """
 
 
 rule su_extract_outputs:
     input:
-        faith=UNIFRAC_FP / "faith",
-        weighted=UNIFRAC_FP / "weighted",
-        unweighted=UNIFRAC_FP / "unweighted",
+        faith=temp(UNIFRAC_FP / "faith" / "alpha-diversity.tsv"),
+        weighted=temp(UNIFRAC_FP / "weighted" / "distance-matrix.tsv"),
+        unweighted=temp(UNIFRAC_FP / "unweighted" / "distance-matrix.tsv"),
     output:
         faith=UNIFRAC_FP / "faith_pd_unrarefied.tsv",
         weighted=UNIFRAC_FP / "wu_unrarefied.tsv",
         unweighted=UNIFRAC_FP / "uu_unrarefied.tsv",
     shell:
         """
-        mv {input.faith} / alpha-diversity.tsv {output.faith}
-        mv {input.weighted} / distance-matrix.tsv {output.weighted}
-        mv {input.unweighted} / distance-matrix.tsv {output.unweighted}
+        mv {input.faith} {output.faith}
+        mv {input.weighted} {output.weighted}
+        mv {input.unweighted} {output.unweighted}
         """
