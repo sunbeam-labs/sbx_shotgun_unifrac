@@ -30,6 +30,7 @@ localrules:
 
 rule all_shotgun_unifrac:
     input:
+        ogu=UNIFRAC_FP / "classified" / "ogu.table.tsv",
         faith=UNIFRAC_FP / "faith_pd_unrarefied.tsv",
         weighted=UNIFRAC_FP / "wu_unrarefied.tsv",
         unweighted=UNIFRAC_FP / "uu_unrarefied.tsv",
@@ -134,7 +135,7 @@ rule su_woltka_classify:
     input:
         aligned_fp=UNIFRAC_FP / "aligned" / "filtered" / ".done",
     output:
-        biom=UNIFRAC_FP / "classified" / "ogu.biom",
+        genus=UNIFRAC_FP / "classified" / "genus.biom",
     log:
         LOG_FP / "su_woltka_classify.log",
     benchmark:
@@ -143,19 +144,43 @@ rule su_woltka_classify:
         runtime=240,
     params:
         fp=UNIFRAC_FP / "aligned" / "filtered",
+        map_fp=str(Path(Cfg["sbx_shotgun_unifrac"]["woltka_map_fp"]) / "taxid.map.txt"),
+        nodes_fp=str(Path(Cfg["sbx_shotgun_unifrac"]["woltka_map_fp"]) / "nodes.dmp"),
+        names_fp=str(Path(Cfg["sbx_shotgun_unifrac"]["woltka_map_fp"]) / "names.dmp"),
     conda:
         "envs/sbx_shotgun_unifrac_env.yml"
     container:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        woltka classify -i {params.fp} -f sam -o {output.biom} > {log} 2>&1
+        woltka classify --input {params.fp} --map {params.map_fp} --nodes {params.nodes_fp} --names {params.names_fp} --rank phylum,genus,species --output $(dirname {output.genus}) > {log} 2>&1
+        """
+
+
+rule su_convert_biom_to_tsv:
+    input:
+        biom=UNIFRAC_FP / "classified" / "genus.biom",
+    output:
+        tsv=UNIFRAC_FP / "classified" / "ogu.table.tsv",
+    log:
+        LOG_FP / "su_convert_biom_to_tsv.log",
+    benchmark:
+        BENCHMARK_FP / "su_convert_biom_to_tsv.tsv"
+    resources:
+        runtime=240,
+    conda:
+        "envs/sbx_shotgun_unifrac_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
+    shell:
+        """
+        biom convert -i {input.biom} -o {output.tsv} --to-tsv > {log} 2>&1
         """
 
 
 rule su_convert_biom_to_qza:
     input:
-        biom=UNIFRAC_FP / "classified" / "ogu.biom",
+        biom=UNIFRAC_FP / "classified" / "genus.biom",
     output:
         qza=UNIFRAC_FP / "classified" / "ogu.table.qza",
     log:
@@ -176,35 +201,11 @@ rule su_convert_biom_to_qza:
         """
 
 
-rule su_filter_table:
-    """Filter table"""
-    input:
-        ogu=UNIFRAC_FP / "classified" / "ogu.table.qza",
-        phy=Cfg["sbx_shotgun_unifrac"]["tree_fp"],
-    output:
-        UNIFRAC_FP / "classified" / "ogu.filtered.table.qza",
-    log:
-        LOG_FP / "su_filter_table.log",
-    benchmark:
-        BENCHMARK_FP / "su_filter_table.tsv"
-    conda:
-        "envs/sbx_shotgun_unifrac_env.yml"
-    container:
-        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
-    shell:
-        """
-        qiime greengenes2 filter-features \
-        --i-feature-table {input.ogu} \
-        --i-reference {input.phy} \
-        --o-filtered-feature-table {output} > {log} 2>&1
-        """
-
-
 rule su_alpha_phylogenetic_diversity:
     """Calculate alpha phylogenetic diversity using Faith's PD"""
     input:
         phy=Cfg["sbx_shotgun_unifrac"]["tree_fp"],
-        ogu=UNIFRAC_FP / "classified" / "ogu.filtered.table.qza",
+        ogu=UNIFRAC_FP / "classified" / "ogu.table.qza",
     output:
         qza=temp(UNIFRAC_FP / "faith_pd_vector.qza"),
     log:
@@ -228,7 +229,7 @@ rule su_alpha_phylogenetic_diversity:
 rule su_weighted_unifrac_distance:
     input:
         phy=Cfg["sbx_shotgun_unifrac"]["tree_fp"],
-        ogu=UNIFRAC_FP / "classified" / "ogu.filtered.table.qza",
+        ogu=UNIFRAC_FP / "classified" / "ogu.table.qza",
     output:
         qza=temp(UNIFRAC_FP / "weighted.qza"),
     log:
@@ -252,7 +253,7 @@ rule su_weighted_unifrac_distance:
 rule su_unweighted_unifrac_distance:
     input:
         phy=Cfg["sbx_shotgun_unifrac"]["tree_fp"],
-        ogu=UNIFRAC_FP / "classified" / "ogu.filtered.table.qza",
+        ogu=UNIFRAC_FP / "classified" / "ogu.table.qza",
     output:
         qza=temp(UNIFRAC_FP / "unweighted.qza"),
     log:
