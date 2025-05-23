@@ -38,27 +38,6 @@ rule all_shotgun_unifrac:
         unweighted=UNIFRAC_FP / "uu_unrarefied.tsv",
 
 
-rule su_temp_install_pip:
-    """TEMPORARY: install pip packages because the conda file can't handle it"""
-    output:
-        temp(UNIFRAC_FP / ".pip_installed"),
-    log:
-        LOG_FP / "su_temp_install_pip.log",
-    benchmark:
-        BENCHMARK_FP / "su_temp_install_pip.tsv"
-    conda:
-        "envs/sbx_shotgun_unifrac_env.yml"
-    container:
-        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
-    shell:
-        """
-        ${{CONDA_PREFIX}}/bin/python -m pip install numpy > {log}
-        ${{CONDA_PREFIX}}/bin/python -m pip install cython >> {log}
-        ${{CONDA_PREFIX}}/bin/python -m pip install q2-greengenes2 >> {log}
-        touch {output}
-        """
-
-
 rule su_align_to_wolr:
     """Align reads to WoLr db"""
     input:
@@ -75,7 +54,6 @@ rule su_align_to_wolr:
         ],
         r1=QC_FP / "decontam" / "{sample}_1.fastq.gz",
         r2=QC_FP / "decontam" / "{sample}_2.fastq.gz",
-        pip=UNIFRAC_FP / ".pip_installed",
     output:
         sam=temp(UNIFRAC_FP / "aligned" / "{sample}.sam"),
     log:
@@ -224,7 +202,7 @@ rule su_convert_biom_to_qza:
     resources:
         runtime=240,
     conda:
-        "envs/sbx_shotgun_unifrac_env.yml"
+        "envs/sbx_q2_diversity_env.yml"
     container:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
