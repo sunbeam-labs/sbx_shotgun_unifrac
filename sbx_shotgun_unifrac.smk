@@ -30,7 +30,9 @@ localrules:
 
 rule all_shotgun_unifrac:
     input:
-        ogu=UNIFRAC_FP / "classified" / "ogu.table.tsv",
+        genus=UNIFRAC_FP / "classified" / "genus.tsv",
+        phylum=UNIFRAC_FP / "classified" / "phylum.tsv",
+        species=UNIFRAC_FP / "classified" / "species.tsv",
         faith=UNIFRAC_FP / "faith_pd_unrarefied.tsv",
         weighted=UNIFRAC_FP / "wu_unrarefied.tsv",
         unweighted=UNIFRAC_FP / "uu_unrarefied.tsv",
@@ -135,7 +137,33 @@ rule su_woltka_classify:
     input:
         aligned_fp=UNIFRAC_FP / "aligned" / "filtered" / ".done",
     output:
+        biom=UNIFRAC_FP / "classified" / "ogu.biom",
+    log:
+        LOG_FP / "su_woltka_classify.log",
+    benchmark:
+        BENCHMARK_FP / "su_woltka_classify.tsv"
+    resources:
+        runtime=240,
+    params:
+        fp=UNIFRAC_FP / "aligned" / "filtered",
+    conda:
+        "envs/sbx_shotgun_unifrac_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
+    shell:
+        """
+        woltka classify -i {params.fp} -f sam -o {output.biom} > {log} 2>&1
+        """
+
+
+rule su_woltka_classify:
+    """Classify reads using woltka"""
+    input:
+        aligned_fp=UNIFRAC_FP / "aligned" / "filtered" / ".done",
+    output:
         genus=UNIFRAC_FP / "classified" / "genus.biom",
+        phylum=UNIFRAC_FP / "classified" / "phylum.biom",
+        species=UNIFRAC_FP / "classified" / "species.biom",
     log:
         LOG_FP / "su_woltka_classify.log",
     benchmark:
@@ -159,9 +187,13 @@ rule su_woltka_classify:
 
 rule su_convert_biom_to_tsv:
     input:
-        biom=UNIFRAC_FP / "classified" / "genus.biom",
+        genus=UNIFRAC_FP / "classified" / "genus.biom",
+        phylum=UNIFRAC_FP / "classified" / "phylum.biom",
+        species=UNIFRAC_FP / "classified" / "species.biom",
     output:
-        tsv=UNIFRAC_FP / "classified" / "ogu.table.tsv",
+        genus=UNIFRAC_FP / "classified" / "genus.tsv",
+        phylum=UNIFRAC_FP / "classified" / "phylum.tsv",
+        species=UNIFRAC_FP / "classified" / "species.tsv",
     log:
         LOG_FP / "su_convert_biom_to_tsv.log",
     benchmark:
@@ -174,13 +206,15 @@ rule su_convert_biom_to_tsv:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        biom convert -i {input.biom} -o {output.tsv} --to-tsv > {log} 2>&1
+        biom convert -i {input.genus} -o {output.genus} --to-tsv > {log} 2>&1
+        biom convert -i {input.phylum} -o {output.phylum} --to-tsv >> {log} 2>&1
+        biom convert -i {input.species} -o {output.species} --to-tsv >> {log} 2>&1
         """
 
 
 rule su_convert_biom_to_qza:
     input:
-        biom=UNIFRAC_FP / "classified" / "genus.biom",
+        biom=UNIFRAC_FP / "classified" / "ogu.biom",
     output:
         qza=UNIFRAC_FP / "classified" / "ogu.table.qza",
     log:
