@@ -30,30 +30,12 @@ localrules:
 
 rule all_shotgun_unifrac:
     input:
+        genus=UNIFRAC_FP / "classified" / "genus.tsv",
+        phylum=UNIFRAC_FP / "classified" / "phylum.tsv",
+        species=UNIFRAC_FP / "classified" / "species.tsv",
         faith=UNIFRAC_FP / "faith_pd_unrarefied.tsv",
         weighted=UNIFRAC_FP / "wu_unrarefied.tsv",
         unweighted=UNIFRAC_FP / "uu_unrarefied.tsv",
-
-
-rule su_temp_install_pip:
-    """TEMPORARY: install pip packages because the conda file can't handle it"""
-    output:
-        temp(UNIFRAC_FP / ".pip_installed"),
-    log:
-        LOG_FP / "su_temp_install_pip.log",
-    benchmark:
-        BENCHMARK_FP / "su_temp_install_pip.tsv"
-    conda:
-        "envs/sbx_shotgun_unifrac_env.yml"
-    container:
-        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
-    shell:
-        """
-        ${{CONDA_PREFIX}}/bin/python -m pip install numpy > {log}
-        ${{CONDA_PREFIX}}/bin/python -m pip install cython >> {log}
-        ${{CONDA_PREFIX}}/bin/python -m pip install q2-greengenes2 >> {log}
-        touch {output}
-        """
 
 
 rule su_align_to_wolr:
@@ -72,7 +54,6 @@ rule su_align_to_wolr:
         ],
         r1=QC_FP / "decontam" / "{sample}_1.fastq.gz",
         r2=QC_FP / "decontam" / "{sample}_2.fastq.gz",
-        pip=UNIFRAC_FP / ".pip_installed",
     output:
         sam=temp(UNIFRAC_FP / "aligned" / "{sample}.sam"),
     log:
@@ -153,6 +134,62 @@ rule su_woltka_classify:
         """
 
 
+rule su_woltka_classify:
+    """Classify reads using woltka"""
+    input:
+        aligned_fp=UNIFRAC_FP / "aligned" / "filtered" / ".done",
+    output:
+        genus=UNIFRAC_FP / "classified" / "genus.biom",
+        phylum=UNIFRAC_FP / "classified" / "phylum.biom",
+        species=UNIFRAC_FP / "classified" / "species.biom",
+    log:
+        LOG_FP / "su_woltka_classify.log",
+    benchmark:
+        BENCHMARK_FP / "su_woltka_classify.tsv"
+    resources:
+        runtime=240,
+    params:
+        fp=UNIFRAC_FP / "aligned" / "filtered",
+        map_fp=str(Path(Cfg["sbx_shotgun_unifrac"]["woltka_map_fp"]) / "taxid.map.txt"),
+        nodes_fp=str(Path(Cfg["sbx_shotgun_unifrac"]["woltka_map_fp"]) / "nodes.dmp"),
+        names_fp=str(Path(Cfg["sbx_shotgun_unifrac"]["woltka_map_fp"]) / "names.dmp"),
+    conda:
+        "envs/sbx_shotgun_unifrac_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
+    shell:
+        """
+        woltka classify --input {params.fp} --map {params.map_fp} --nodes {params.nodes_fp} --names {params.names_fp} --rank phylum,genus,species --output $(dirname {output.genus}) > {log} 2>&1
+        """
+
+
+rule su_convert_biom_to_tsv:
+    input:
+        genus=UNIFRAC_FP / "classified" / "genus.biom",
+        phylum=UNIFRAC_FP / "classified" / "phylum.biom",
+        species=UNIFRAC_FP / "classified" / "species.biom",
+    output:
+        genus=UNIFRAC_FP / "classified" / "genus.tsv",
+        phylum=UNIFRAC_FP / "classified" / "phylum.tsv",
+        species=UNIFRAC_FP / "classified" / "species.tsv",
+    log:
+        LOG_FP / "su_convert_biom_to_tsv.log",
+    benchmark:
+        BENCHMARK_FP / "su_convert_biom_to_tsv.tsv"
+    resources:
+        runtime=240,
+    conda:
+        "envs/sbx_shotgun_unifrac_env.yml"
+    container:
+        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
+    shell:
+        """
+        biom convert -i {input.genus} -o {output.genus} --to-tsv > {log} 2>&1
+        biom convert -i {input.phylum} -o {output.phylum} --to-tsv >> {log} 2>&1
+        biom convert -i {input.species} -o {output.species} --to-tsv >> {log} 2>&1
+        """
+
+
 rule su_convert_biom_to_qza:
     input:
         biom=UNIFRAC_FP / "classified" / "ogu.biom",
@@ -165,7 +202,7 @@ rule su_convert_biom_to_qza:
     resources:
         runtime=240,
     conda:
-        "envs/sbx_shotgun_unifrac_env.yml"
+        "envs/sbx_q2_diversity_env.yml"
     container:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
@@ -176,35 +213,11 @@ rule su_convert_biom_to_qza:
         """
 
 
-rule su_filter_table:
-    """Filter table"""
-    input:
-        ogu=UNIFRAC_FP / "classified" / "ogu.table.qza",
-        phy=Cfg["sbx_shotgun_unifrac"]["tree_fp"],
-    output:
-        UNIFRAC_FP / "classified" / "ogu.filtered.table.qza",
-    log:
-        LOG_FP / "su_filter_table.log",
-    benchmark:
-        BENCHMARK_FP / "su_filter_table.tsv"
-    conda:
-        "envs/sbx_shotgun_unifrac_env.yml"
-    container:
-        f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
-    shell:
-        """
-        qiime greengenes2 filter-features \
-        --i-feature-table {input.ogu} \
-        --i-reference {input.phy} \
-        --o-filtered-feature-table {output} > {log} 2>&1
-        """
-
-
 rule su_alpha_phylogenetic_diversity:
     """Calculate alpha phylogenetic diversity using Faith's PD"""
     input:
         phy=Cfg["sbx_shotgun_unifrac"]["tree_fp"],
-        ogu=UNIFRAC_FP / "classified" / "ogu.filtered.table.qza",
+        ogu=UNIFRAC_FP / "classified" / "ogu.table.qza",
     output:
         qza=temp(UNIFRAC_FP / "faith_pd_vector.qza"),
     log:
@@ -228,7 +241,7 @@ rule su_alpha_phylogenetic_diversity:
 rule su_weighted_unifrac_distance:
     input:
         phy=Cfg["sbx_shotgun_unifrac"]["tree_fp"],
-        ogu=UNIFRAC_FP / "classified" / "ogu.filtered.table.qza",
+        ogu=UNIFRAC_FP / "classified" / "ogu.table.qza",
     output:
         qza=temp(UNIFRAC_FP / "weighted.qza"),
     log:
@@ -252,7 +265,7 @@ rule su_weighted_unifrac_distance:
 rule su_unweighted_unifrac_distance:
     input:
         phy=Cfg["sbx_shotgun_unifrac"]["tree_fp"],
-        ogu=UNIFRAC_FP / "classified" / "ogu.filtered.table.qza",
+        ogu=UNIFRAC_FP / "classified" / "ogu.table.qza",
     output:
         qza=temp(UNIFRAC_FP / "unweighted.qza"),
     log:
