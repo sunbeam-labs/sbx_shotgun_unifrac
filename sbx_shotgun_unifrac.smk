@@ -134,7 +134,7 @@ rule su_woltka_classify:
         """
 
 
-rule su_woltka_classify:
+rule su_woltka_classify_map:
     """Classify reads using woltka"""
     input:
         aligned_fp=UNIFRAC_FP / "aligned" / "filtered" / ".done",
