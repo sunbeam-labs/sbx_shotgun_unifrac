@@ -1,21 +1,18 @@
+import os
 import pytest
 import shutil
 import subprocess as sp
-import sys
-import tempfile
 from pathlib import Path
 
 
 @pytest.fixture
-def setup():
-    temp_dir = Path(tempfile.mkdtemp())
-
+def setup(tmp_path):
     reads_fp = Path(".tests/data/reads/").resolve()
     wolr_fp = Path(".tests/data/wolr/").resolve()
-    dummy_phy_fp = temp_dir / "dummy_phy.qza"
+    dummy_phy_fp = tmp_path / "dummy_phy.qza"
     dummy_phy_fp.touch()
 
-    project_dir = temp_dir / "project/"
+    project_dir = tmp_path / "project/"
 
     sp.check_output(["sunbeam", "init", "--data_fp", reads_fp, project_dir])
 
@@ -27,9 +24,7 @@ def setup():
         [
             "sunbeam",
             "config",
-            "modify",
-            "-i",
-            "-s",
+            "--modify",
             f"{config_str}",
             f"{config_fp}",
         ]
@@ -41,28 +36,25 @@ def setup():
         [
             "sunbeam",
             "config",
-            "modify",
-            "-i",
-            "-s",
+            "--modify",
             f"{config_str}",
             f"{config_fp}",
         ]
     )
 
-    yield temp_dir, project_dir
+    yield tmp_path, project_dir
 
-    shutil.rmtree(temp_dir)
+    shutil.rmtree(tmp_path)
 
 
 @pytest.fixture
 def run_sunbeam(setup):
-    temp_dir, project_dir = setup
+    tmp_path, project_dir = setup
     output_fp = project_dir / "sunbeam_output"
     log_fp = output_fp / "logs"
     stats_fp = project_dir / "stats"
 
-    # Run the test job
-    sp.check_output(
+    sbx_proc = sp.run(
         [
             "sunbeam",
             "run",
@@ -70,18 +62,29 @@ def run_sunbeam(setup):
             project_dir,
             "all_shotgun_unifrac",
             "--directory",
-            temp_dir,
-            "-n",
-        ]
+            tmp_path,
+        ],
+        capture_output=True,
+        text=True,
     )
+
+    print("STDOUT: ", sbx_proc.stdout)
+    print("STDERR: ", sbx_proc.stderr)
+
+    if os.getenv("GITHUB_ACTIONS") == "true":
+        try:
+            shutil.copytree(log_fp, "logs/")
+            shutil.copytree(stats_fp, "stats/")
+        except FileNotFoundError:
+            print("No logs or stats directory found.")
 
     output_fp = project_dir / "sunbeam_output"
     benchmarks_fp = project_dir / "stats/"
 
-    yield output_fp, benchmarks_fp
+    yield output_fp, benchmarks_fp, sbx_proc
 
 
 def test_full_run(run_sunbeam):
-    output_fp, benchmarks_fp = run_sunbeam
+    output_fp, benchmarks_fp, proc = run_sunbeam
 
-    assert True  # Dryrun successful
+    assert proc.returncode == 0, f"Sunbeam run failed with error: {proc.stderr}"
