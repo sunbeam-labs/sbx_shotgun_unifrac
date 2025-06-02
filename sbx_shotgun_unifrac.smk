@@ -24,7 +24,6 @@ except NameError:
 
 localrules:
     all_shotgun_unifrac,
-    su_temp_install_pip,
     su_extract_outputs,
 
 
@@ -41,25 +40,14 @@ rule all_shotgun_unifrac:
 rule su_align_to_wolr:
     """Align reads to WoLr db"""
     input:
-        [
-            Path(Cfg["sbx_shotgun_unifrac"]["wolr_fp"]) / ("WoLr2" + ext)
-            for ext in [
-                ".1.bt2l",
-                ".2.bt2l",
-                ".3.bt2l",
-                ".4.bt2l",
-                ".rev.1.bt2l",
-                ".rev.2.bt2l",
-            ]
-        ],
         r1=QC_FP / "decontam" / "{sample}_1.fastq.gz",
         r2=QC_FP / "decontam" / "{sample}_2.fastq.gz",
     output:
         sam=temp(UNIFRAC_FP / "aligned" / "{sample}.sam"),
     log:
-        LOG_FP / "su_align_to_green_genes_{sample}.log",
+        LOG_FP / "su_align_to_wolr_{sample}.log",
     benchmark:
-        BENCHMARK_FP / "su_align_to_green_genes_{sample}.tsv"
+        BENCHMARK_FP / "su_align_to_wolr_{sample}.tsv"
     params:
         wolr=Cfg["sbx_shotgun_unifrac"]["wolr_fp"],
     threads: Cfg["sbx_shotgun_unifrac"]["threads"]
@@ -72,11 +60,18 @@ rule su_align_to_wolr:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        bowtie2 -p 8 -x {params.wolr}/WoLr2 \
+        (
+        bowtie2 \
+        -p 8 \
+        -x {params.wolr}/WoLr2 \
         -1 {input.r1} \
         -2 {input.r2} \
         --very-sensitive --no-head \
-        --no-unal | cut -f1-9 | sed 's/$/\t*\t*/' > {output.sam} 2> {log}
+        --no-unal \
+        | cut -f1-9 \
+        | sed 's/$/\t*\t*/' \
+        > {output.sam}
+        ) > {log} 2>&1
         """
 
 
@@ -130,7 +125,13 @@ rule su_woltka_classify:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        woltka classify -i {params.fp} -f sam -o {output.biom} > {log} 2>&1
+        (
+            woltka classify \
+            --input {params.fp} \
+            -f sam \
+            --output {output.biom} \
+            --to-biom
+        ) > {log} 2>&1
         """
 
 
@@ -159,7 +160,17 @@ rule su_woltka_classify_map:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        woltka classify --input {params.fp} --map {params.map_fp} --nodes {params.nodes_fp} --names {params.names_fp} --rank phylum,genus,species --output $(dirname {output.genus}) > {log} 2>&1
+        (
+            woltka \
+            classify \
+            --input {params.fp} \
+            --map {params.map_fp} \
+            --nodes {params.nodes_fp} \
+            --names {params.names_fp} \
+            --rank phylum,genus,species \
+            --output $(dirname {output.genus}) \
+            --to-biom
+        ) > {log} 2>&1
         """
 
 
@@ -184,9 +195,11 @@ rule su_convert_biom_to_tsv:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        biom convert -i {input.genus} -o {output.genus} --to-tsv > {log} 2>&1
-        biom convert -i {input.phylum} -o {output.phylum} --to-tsv >> {log} 2>&1
-        biom convert -i {input.species} -o {output.species} --to-tsv >> {log} 2>&1
+        (
+            biom convert -i {input.genus} -o {output.genus} --to-tsv
+            biom convert -i {input.phylum} -o {output.phylum} --to-tsv
+            biom convert -i {input.species} -o {output.species} --to-tsv
+        ) > {log} 2>&1
         """
 
 
