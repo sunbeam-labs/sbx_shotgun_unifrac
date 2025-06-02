@@ -61,16 +61,16 @@ rule su_align_to_wolr:
     shell:
         """
         (
-        bowtie2 \
-        -p 8 \
-        -x {params.wolr}/WoLr2 \
-        -1 {input.r1} \
-        -2 {input.r2} \
-        --very-sensitive --no-head \
-        --no-unal \
-        | cut -f1-9 \
-        | sed 's/$/\t*\t*/' \
-        > {output.sam}
+            bowtie2 \
+            -p 8 \
+            -x {params.wolr}/WoLr2 \
+            -1 {input.r1} \
+            -2 {input.r2} \
+            --very-sensitive --no-head \
+            --no-unal \
+            | cut -f1-9 \
+            | sed 's/$/\t*\t*/' \
+            > {output.sam}
         ) > {log} 2>&1
         """
 
@@ -133,6 +133,7 @@ rule su_woltka_classify:
             --to-biom
         ) > {log} 2>&1
         """
+
 
 
 rule su_woltka_classify_map:
@@ -318,17 +319,19 @@ rule su_export_qzas:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        qiime tools export \
-        --input-path {input.faith} \
-        --output-path $(dirname {output.faith}) > {log} 2>&1
+        (
+            qiime tools export \
+            --input-path {input.faith} \
+            --output-path $(dirname {output.faith})
 
-        qiime tools export \
-        --input-path {input.weighted} \
-        --output-path $(dirname {output.weighted}) >> {log} 2>&1
+            qiime tools export \
+            --input-path {input.weighted} \
+            --output-path $(dirname {output.weighted})
 
-        qiime tools export \
-        --input-path {input.unweighted} \
-        --output-path $(dirname {output.unweighted}) >> {log} 2>&1
+            qiime tools export \
+            --input-path {input.unweighted} \
+            --output-path $(dirname {output.unweighted})
+        ) > {log} 2>&1
         """
 
 
