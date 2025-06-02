@@ -11,19 +11,7 @@ def setup():
     temp_dir = Path(tempfile.mkdtemp())
 
     reads_fp = Path(".tests/data/reads/").resolve()
-    dummy_wolr_fp = temp_dir / "wolr"
-    dummy_wolr_fp.mkdir()
-    [
-        (dummy_wolr_fp / x).touch()
-        for x in [
-            "WoLr2.1.bt2l",
-            "WoLr2.2.bt2l",
-            "WoLr2.3.bt2l",
-            "WoLr2.4.bt2l",
-            "WoLr2.rev.1.bt2l",
-            "WoLr2.rev.2.bt2l",
-        ]
-    ]
+    wolr_fp = Path(".tests/data/wolr/").resolve()
     dummy_phy_fp = temp_dir / "dummy_phy.qza"
     dummy_phy_fp.touch()
 
@@ -33,7 +21,7 @@ def setup():
 
     config_fp = project_dir / "sunbeam_config.yml"
 
-    config_str = f"sbx_shotgun_unifrac: {{wolr_fp: '{str(dummy_wolr_fp)}'}}"
+    config_str = f"sbx_shotgun_unifrac: {{wolr_fp: '{str(wolr_fp)}'}}"
 
     sp.check_output(
         [
