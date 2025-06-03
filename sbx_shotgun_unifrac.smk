@@ -1,25 +1,11 @@
-def get_shotgun_unifrac_path() -> Path:
-    for fp in sys.path:
-        if fp.split("/")[-1] == "sbx_shotgun_unifrac":
-            return Path(fp)
-    raise Error(
-        "Filepath for sbx_shotgun_unifrac not found, are you sure it's installed under extensions/sbx_shotgun_unifrac?"
-    )
+try:
+    SBX_SHOTGUN_UNIFRAC_VERSION = get_ext_version("sbx_shotgun_unifrac")
+except NameError:
+    # For backwards compatibility with older versions of Sunbeam
+    SBX_SHOTGUN_UNIFRAC_VERSION = "0.0.0"
 
 
 UNIFRAC_FP = Cfg["all"]["output_fp"] / "shotgun_unifrac"
-SBX_SHOTGUN_UNIFRAC_VERSION = (
-    open(get_shotgun_unifrac_path() / "VERSION").read().strip()
-)
-
-try:
-    BENCHMARK_FP
-except NameError:
-    BENCHMARK_FP = output_subdir(Cfg, "benchmarks")
-try:
-    LOG_FP
-except NameError:
-    LOG_FP = output_subdir(Cfg, "logs")
 
 
 localrules:

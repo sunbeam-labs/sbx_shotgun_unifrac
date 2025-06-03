@@ -78,6 +78,8 @@ def run_sunbeam(setup):
             shutil.copytree(stats_fp, "stats/")
         except FileNotFoundError:
             print("No logs or stats directory found.")
+            Path("logs").mkdir(exist_ok=True)
+            Path("stats").mkdir(exist_ok=True)
 
     output_fp = project_dir / "sunbeam_output"
     benchmarks_fp = project_dir / "stats/"
