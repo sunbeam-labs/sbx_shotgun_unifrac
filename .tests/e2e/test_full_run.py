@@ -63,6 +63,7 @@ def run_sunbeam(setup):
             "all_shotgun_unifrac",
             "--directory",
             tmp_path,
+            "-n",
         ],
         capture_output=True,
         text=True,
