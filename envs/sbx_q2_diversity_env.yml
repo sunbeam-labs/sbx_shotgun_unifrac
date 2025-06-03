@@ -1,5 +1,3 @@
-# Unfortunately, haven't found a good way of combining the q2-diversity package
-# with the rest of this extension's dependencies
 channels:
 - https://packages.qiime2.org/qiime2/2024.10/amplicon/released
 - conda-forge

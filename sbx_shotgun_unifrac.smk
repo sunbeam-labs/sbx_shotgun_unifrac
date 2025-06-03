@@ -1,30 +1,15 @@
-def get_shotgun_unifrac_path() -> Path:
-    for fp in sys.path:
-        if fp.split("/")[-1] == "sbx_shotgun_unifrac":
-            return Path(fp)
-    raise Error(
-        "Filepath for sbx_shotgun_unifrac not found, are you sure it's installed under extensions/sbx_shotgun_unifrac?"
-    )
+try:
+    SBX_SHOTGUN_UNIFRAC_VERSION = get_ext_version("sbx_shotgun_unifrac")
+except NameError:
+    # For backwards compatibility with older versions of Sunbeam
+    SBX_SHOTGUN_UNIFRAC_VERSION = "0.0.0"
 
 
 UNIFRAC_FP = Cfg["all"]["output_fp"] / "shotgun_unifrac"
-SBX_SHOTGUN_UNIFRAC_VERSION = (
-    open(get_shotgun_unifrac_path() / "VERSION").read().strip()
-)
-
-try:
-    BENCHMARK_FP
-except NameError:
-    BENCHMARK_FP = output_subdir(Cfg, "benchmarks")
-try:
-    LOG_FP
-except NameError:
-    LOG_FP = output_subdir(Cfg, "logs")
 
 
 localrules:
     all_shotgun_unifrac,
-    su_temp_install_pip,
     su_extract_outputs,
 
 
@@ -41,25 +26,14 @@ rule all_shotgun_unifrac:
 rule su_align_to_wolr:
     """Align reads to WoLr db"""
     input:
-        [
-            Path(Cfg["sbx_shotgun_unifrac"]["wolr_fp"]) / ("WoLr2" + ext)
-            for ext in [
-                ".1.bt2l",
-                ".2.bt2l",
-                ".3.bt2l",
-                ".4.bt2l",
-                ".rev.1.bt2l",
-                ".rev.2.bt2l",
-            ]
-        ],
         r1=QC_FP / "decontam" / "{sample}_1.fastq.gz",
         r2=QC_FP / "decontam" / "{sample}_2.fastq.gz",
     output:
         sam=temp(UNIFRAC_FP / "aligned" / "{sample}.sam"),
     log:
-        LOG_FP / "su_align_to_green_genes_{sample}.log",
+        LOG_FP / "su_align_to_wolr_{sample}.log",
     benchmark:
-        BENCHMARK_FP / "su_align_to_green_genes_{sample}.tsv"
+        BENCHMARK_FP / "su_align_to_wolr_{sample}.tsv"
     params:
         wolr=Cfg["sbx_shotgun_unifrac"]["wolr_fp"],
     threads: Cfg["sbx_shotgun_unifrac"]["threads"]
@@ -72,11 +46,18 @@ rule su_align_to_wolr:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        bowtie2 -p 8 -x {params.wolr}/WoLr2 \
-        -1 {input.r1} \
-        -2 {input.r2} \
-        --very-sensitive --no-head \
-        --no-unal | cut -f1-9 | sed 's/$/\t*\t*/' > {output.sam} 2> {log}
+        (
+            bowtie2 \
+            -p 8 \
+            -x {params.wolr}/WoLr2 \
+            -1 {input.r1} \
+            -2 {input.r2} \
+            --very-sensitive --no-head \
+            --no-unal \
+            | cut -f1-9 \
+            | sed 's/$/\t*\t*/' \
+            > {output.sam}
+        ) > {log} 2>&1
         """
 
 
@@ -130,7 +111,13 @@ rule su_woltka_classify:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        woltka classify -i {params.fp} -f sam -o {output.biom} > {log} 2>&1
+        (
+            woltka classify \
+            --input {params.fp} \
+            -f sam \
+            --output {output.biom} \
+            --to-biom
+        ) > {log} 2>&1
         """
 
 
@@ -159,7 +146,17 @@ rule su_woltka_classify_map:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        woltka classify --input {params.fp} --map {params.map_fp} --nodes {params.nodes_fp} --names {params.names_fp} --rank phylum,genus,species --output $(dirname {output.genus}) > {log} 2>&1
+        (
+            woltka \
+            classify \
+            --input {params.fp} \
+            --map {params.map_fp} \
+            --nodes {params.nodes_fp} \
+            --names {params.names_fp} \
+            --rank phylum,genus,species \
+            --output $(dirname {output.genus}) \
+            --to-biom
+        ) > {log} 2>&1
         """
 
 
@@ -184,9 +181,11 @@ rule su_convert_biom_to_tsv:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        biom convert -i {input.genus} -o {output.genus} --to-tsv > {log} 2>&1
-        biom convert -i {input.phylum} -o {output.phylum} --to-tsv >> {log} 2>&1
-        biom convert -i {input.species} -o {output.species} --to-tsv >> {log} 2>&1
+        (
+            biom convert -i {input.genus} -o {output.genus} --to-tsv
+            biom convert -i {input.phylum} -o {output.phylum} --to-tsv
+            biom convert -i {input.species} -o {output.species} --to-tsv
+        ) > {log} 2>&1
         """
 
 
@@ -305,17 +304,19 @@ rule su_export_qzas:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        qiime tools export \
-        --input-path {input.faith} \
-        --output-path $(dirname {output.faith}) > {log} 2>&1
+        (
+            qiime tools export \
+            --input-path {input.faith} \
+            --output-path $(dirname {output.faith})
 
-        qiime tools export \
-        --input-path {input.weighted} \
-        --output-path $(dirname {output.weighted}) >> {log} 2>&1
+            qiime tools export \
+            --input-path {input.weighted} \
+            --output-path $(dirname {output.weighted})
 
-        qiime tools export \
-        --input-path {input.unweighted} \
-        --output-path $(dirname {output.unweighted}) >> {log} 2>&1
+            qiime tools export \
+            --input-path {input.unweighted} \
+            --output-path $(dirname {output.unweighted})
+        ) > {log} 2>&1
         """
 
 
