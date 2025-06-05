@@ -80,11 +80,15 @@ rule su_filter_on_sequence_number:
         """
         echo "Files with 100 or fewer sequences:" > {log}
         mkdir -p {params.fp}
-        for f in {input} ; do
-            if [ $(samtools view -c -F 4 $f) -le 100 ]; then
-                echo $f >> {log}
+        for f in {input}; do
+            if [ ! -s "$f" ]; then
+                # File is empty
+                echo "$f (empty file)" >> {log}
+            elif [ $(samtools view -c "$f") -le 100 ]; then
+                # File has 100 or fewer total reads (mapped + unmapped)
+                echo "$f (few reads)" >> {log}
             else
-                cp $f {params.fp}
+                cp "$f" {params.fp}
             fi
         done
         touch {output}
@@ -130,9 +134,9 @@ rule su_woltka_classify_map:
         phylum=UNIFRAC_FP / "classified" / "phylum.biom",
         species=UNIFRAC_FP / "classified" / "species.biom",
     log:
-        LOG_FP / "su_woltka_classify.log",
+        LOG_FP / "su_woltka_classify_map.log",
     benchmark:
-        BENCHMARK_FP / "su_woltka_classify.tsv"
+        BENCHMARK_FP / "su_woltka_classify_map.tsv"
     resources:
         runtime=240,
     params:
