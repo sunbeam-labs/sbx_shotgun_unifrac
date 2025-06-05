@@ -322,9 +322,9 @@ rule su_export_qzas:
 
 rule su_extract_outputs:
     input:
-        faith=temp(UNIFRAC_FP / "faith" / "alpha-diversity.tsv"),
-        weighted=temp(UNIFRAC_FP / "weighted" / "distance-matrix.tsv"),
-        unweighted=temp(UNIFRAC_FP / "unweighted" / "distance-matrix.tsv"),
+        faith=UNIFRAC_FP / "faith" / "alpha-diversity.tsv",
+        weighted=UNIFRAC_FP / "weighted" / "distance-matrix.tsv",
+        unweighted=UNIFRAC_FP / "unweighted" / "distance-matrix.tsv",
     output:
         faith=UNIFRAC_FP / "faith_pd_unrarefied.tsv",
         weighted=UNIFRAC_FP / "wu_unrarefied.tsv",
