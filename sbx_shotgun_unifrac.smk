@@ -78,14 +78,11 @@ rule su_filter_on_sequence_number:
         f"docker://sunbeamlabs/sbx_shotgun_unifrac:{SBX_SHOTGUN_UNIFRAC_VERSION}"
     shell:
         """
-        echo "Files with 100 or fewer sequences:" > {log}
+        echo "Files with n or fewer sequences:" > {log}
         mkdir -p {params.fp}
         for f in {input}; do
-            if [ ! -s "$f" ]; then
-                # File is empty
-                echo "$f (empty file)" >> {log}
-            elif [ $(samtools view -c "$f") -le 100 ]; then
-                # File has 100 or fewer total reads (mapped + unmapped)
+            if [ $(wc -l < "$f") -le 500 ]; then
+                # File has n or fewer total reads (mapped + unmapped)
                 echo "$f (few reads)" >> {log}
             else
                 cp "$f" {params.fp}
